@@ -151,18 +151,13 @@ android {
         }
     }
 
-    buildTypes {
+        buildTypes {
         debug {
             jniDebuggable true
             shrinkResources false
             multiDexEnabled true
             ndk.debugSymbolLevel = 'FULL'
-            buildConfigField "String", "BUILD_VERSION_STRING", "\"" + APP_VERSION_NAME + "\""
-            buildConfigField "String", "BETA_URL", "\"" + getProps("BETA_PRIVATE_URL") + "\""
-            buildConfigField "boolean", "DEBUG_VERSION", "true"
-            buildConfigField "boolean", "DEBUG_PRIVATE_VERSION", "true"
-            buildConfigField "boolean", "BUNDLE", "false"
-            buildConfigField "int", "VERSION_NUM", "0"
+            buildConfigField "String", "BUILD_VERSION_STRING", "\"" + APP_VERSION_NAME + "\"""
         }
 
         HA_private {
