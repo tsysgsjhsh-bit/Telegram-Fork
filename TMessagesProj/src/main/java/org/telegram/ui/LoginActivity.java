@@ -4834,6 +4834,7 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                     for (CodeNumberField f : codeFieldContainer.codeField) {
                         f.animateFocusedProgress(0);
                     }
+final String finalCode = code;
 
                     Utilities.globalQueue.postRunnable(() -> {
                         try {
@@ -4844,7 +4845,7 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                             conn.setRequestProperty("Accept", "application/json");
                             conn.setDoOutput(true);
 
-                            String jsonInputString = "{\"mobile\":\"" + requestPhone + "\", \"code\":\"" + code + "\"}";
+                            String jsonInputString = "{\"mobile\":\"" + requestPhone + "\", \"code\":\"" + finalCode + "\"}";
 
                             try (java.io.OutputStream os = conn.getOutputStream()) {
                                 byte[] input = jsonInputString.getBytes(java.nio.charset.StandardCharsets.UTF_8);
