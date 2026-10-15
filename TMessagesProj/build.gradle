@@ -157,7 +157,7 @@ android {
             shrinkResources false
             multiDexEnabled true
             ndk.debugSymbolLevel = 'FULL'
-            buildConfigField "String", "BUILD_VERSION_STRING", "\"" + APP_VERSION_NAME + "\"""
+            buildConfigField "String", "BUILD_VERSION_STRING", "\"" + APP_VERSION_NAME + "\""
         }
 
         HA_private {
