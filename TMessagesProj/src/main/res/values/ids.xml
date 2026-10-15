@@ -33,7 +33,7 @@
     <item name="acc_action_summarize" type="id"/>
     <item name="shake_animation" type="id"/>
 
-    <item name="ariyant.shopout_callback" type="id"/>
+    <item name="timeout_callback" type="id"/>
 
     <item name="menu_open_bot" type="id"/>
     <item name="menu_settings" type="id"/>
