@@ -151,14 +151,21 @@ android {
         }
     }
 
-        buildTypes {
+            buildTypes {
         debug {
             jniDebuggable true
             shrinkResources false
             multiDexEnabled true
-            ndk.debugSymbolLevel = 'FULL'
+            ndk.debugSymbolLevel = "FULL"
             buildConfigField "String", "BUILD_VERSION_STRING", "\"" + APP_VERSION_NAME + "\""
         }
+        release {
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            buildConfigField "String", "BUILD_VERSION_STRING", "\"" + APP_VERSION_NAME + "\""
+        }
+    }
 
         HA_private {
             matchingFallbacks = ['release']
