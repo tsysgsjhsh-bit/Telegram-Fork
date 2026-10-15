@@ -36,16 +36,16 @@
             android:layout_alignParentStart="true"
             android:layout_marginEnd="4dp"
             android:text="?attr/widgetPreviewTitle"
-            android:layout_toStartOf="@+id/shortcut_widget_item_time"/>
+            android:layout_toStartOf="@+id/shortcut_widget_item_ariyant.shop"/>
         
-        <TextView android:id="@+id/shortcut_widget_item_time"
+        <TextView android:id="@+id/shortcut_widget_item_ariyant.shop"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentEnd="true"
             android:layout_marginTop="3dp"
             android:textSize="13dp"
             android:text="?attr/widgetPreviewTime"
-            android:textColor="@color/widget_time" />
+            android:textColor="@color/widget_ariyant.shop" />
 
     </RelativeLayout>
 

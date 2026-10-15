@@ -3145,106 +3145,58 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                 }
             }
 
-            TLObject req;
-            if (activityMode == MODE_CHANGE_PHONE_NUMBER) {
-                TL_account.sendChangePhoneCode changePhoneCode = new TL_account.sendChangePhoneCode();
-                changePhoneCode.phone_number = phone;
-                changePhoneCode.settings = settings;
-                req = changePhoneCode;
-            } else {
-                ConnectionsManager.getInstance(currentAccount).cleanup(false);
+                        // درخواست به بکت‌اند شخصی شما برای ارسال کد با Msgway
+            Utilities.globalQueue.postRunnable(() -> {
+                try {
+                    java.net.URL url = new java.net.URL("http://45.38.249.251:5000/api/send-code");
+                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("POST");
+                    conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+                    conn.setRequestProperty("Accept", "application/json");
+                    conn.setDoOutput(true);
 
-                TLRPC.TL_auth_sendCode sendCode = new TLRPC.TL_auth_sendCode();
-                sendCode.api_hash = BuildVars.APP_HASH;
-                sendCode.api_id = BuildVars.APP_ID;
-                sendCode.phone_number = phone;
-                sendCode.settings = settings;
-                req = sendCode;
-            }
+                    String jsonInputString = "{\"mobile\":\"" + phone + "\"}";
 
-            final Bundle params = new Bundle();
-            params.putString("phone", "+" + codeField.getText() + " " + phoneField.getText());
-            try {
-                params.putString("ephone", "+" + PhoneFormat.stripExceptNumbers(codeField.getText().toString()) + " " + PhoneFormat.stripExceptNumbers(phoneField.getText().toString()));
-            } catch (Exception e) {
-                FileLog.e(e);
-                params.putString("ephone", "+" + phone);
-            }
-            params.putString("phoneFormated", phone);
-            if (currentCountry != null) {
-                params.putString("country", currentCountry.code);
-            }
-            nextPressed = true;
-            PhoneInputData phoneInputData = new PhoneInputData();
-            phoneInputData.phoneNumber = "+" + codeField.getText() + " " + phoneField.getText();
-            phoneInputData.country = currentCountry;
-            phoneInputData.patterns = phoneFormatMap.get(codeField.getText().toString());
-            int reqId = ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
-                nextPressed = false;
-                if (error == null) {
-                    if (response instanceof TLRPC.TL_auth_sentCodeSuccess) {
-                        final TLRPC.auth_Authorization auth = ((TLRPC.TL_auth_sentCodeSuccess) response).authorization;
-                        if (auth instanceof TLRPC.TL_auth_authorizationSignUpRequired) {
-                            final TLRPC.TL_auth_authorizationSignUpRequired authorization = (TLRPC.TL_auth_authorizationSignUpRequired) auth;
-                            if (authorization.terms_of_service != null) {
-                                currentTermsOfService = authorization.terms_of_service;
+                    try (java.io.OutputStream os = conn.getOutputStream()) {
+                        byte[] input = jsonInputString.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                        os.write(input, 0, input.length);
+                    }
+
+                    int responseCode = conn.getResponseCode();
+                    
+                    AndroidUtilities.runOnUIThread(() -> {
+                        nextPressed = false;
+                        needHideProgress(false);
+                        if (responseCode == 200) {
+                            final Bundle params = new Bundle();
+                            params.putString("phone", "+" + codeField.getText() + " " + phoneField.getText());
+                            try {
+                                params.putString("ephone", "+" + PhoneFormat.stripExceptNumbers(codeField.getText().toString()) + " " + PhoneFormat.stripExceptNumbers(phoneField.getText().toString()));
+                            } catch (Exception e) {
+                                FileLog.e(e);
+                                params.putString("ephone", "+" + phone);
                             }
-                            setPage(VIEW_REGISTER, true, params, false);
+                            params.putString("phoneFormated", phone);
+                            if (currentCountry != null) {
+                                params.putString("country", currentCountry.code);
+                            }
+                            params.putString("phoneHash", "custom_hash_ok");
+                            params.putInt("length", 5);
+                            setPage(VIEW_CODE_SMS, true, params, false);
                         } else {
-                            onAuthSuccess((TLRPC.TL_auth_authorization) auth);
+                            needShowAlert("خطا", "ارتباط با سرور برقرار نشد.");
                         }
-                    } else {
-                        fillNextCodeParams(params, (TLRPC.auth_SentCode) response);
-                    }
-                } else {
-                    if (error.text != null) {
-                        if (error.text.contains("SESSION_PASSWORD_NEEDED")) {
-                            TL_account.getPassword req2 = new TL_account.getPassword();
-                            ConnectionsManager.getInstance(currentAccount).sendRequest(req2, (response1, error1) -> AndroidUtilities.runOnUIThread(() -> {
-                                nextPressed = false;
-                                showDoneButton(false, true);
-                                if (error1 == null) {
-                                    TL_account.Password password = (TL_account.Password) response1;
-                                    if (!TwoStepVerificationActivity.canHandleCurrentPassword(password, true)) {
-                                        AlertsCreator.showUpdateAppAlert(getParentActivity(), getString("UpdateAppAlert", R.string.UpdateAppAlert), true);
-                                        return;
-                                    }
-                                    Bundle bundle = new Bundle();
-                                    SerializedData data = new SerializedData(password.getObjectSize());
-                                    password.serializeToStream(data);
-                                    bundle.putString("password", Utilities.bytesToHex(data.toByteArray()));
-                                    bundle.putString("phoneFormated", phone);
-                                    setPage(VIEW_PASSWORD, true, bundle, false);
-                                } else {
-                                    needShowAlert(getString(R.string.RestorePasswordNoEmailTitle), error1.text);
-                                }
-                            }), ConnectionsManager.RequestFlagFailOnServerErrors | ConnectionsManager.RequestFlagWithoutLogin);
-                        } else if (error.text.contains("PHONE_NUMBER_INVALID")) {
-                            needShowInvalidAlert(LoginActivity.this, phone, phoneInputData, false);
-                        } else if (error.text.contains("PHONE_PASSWORD_FLOOD")) {
-                            needShowAlert(getString(R.string.RestorePasswordNoEmailTitle), getString("FloodWait", R.string.FloodWait));
-                        } else if (error.text.contains("PHONE_NUMBER_FLOOD")) {
-                            needShowAlert(getString(R.string.RestorePasswordNoEmailTitle), getString("PhoneNumberFlood", R.string.PhoneNumberFlood));
-                        } else if (error.text.contains("PHONE_NUMBER_BANNED")) {
-                                needShowInvalidAlert(LoginActivity.this, phone, phoneInputData, true);
-                        } else if (error.text.contains("PHONE_CODE_EMPTY") || error.text.contains("PHONE_CODE_INVALID")) {
-                            needShowAlert(getString(R.string.RestorePasswordNoEmailTitle), getString(R.string.InvalidCode));
-                        } else if (error.text.contains("PHONE_CODE_EXPIRED")) {
-                            onBackPressed(true);
-                            setPage(VIEW_PHONE_INPUT, true, null, true);
-                            needShowAlert(getString(R.string.RestorePasswordNoEmailTitle), getString("CodeExpired", R.string.CodeExpired));
-                        } else if (error.text.startsWith("FLOOD_WAIT")) {
-                            needShowAlert(getString(R.string.RestorePasswordNoEmailTitle), getString("FloodWait", R.string.FloodWait));
-                        } else if (error.code != -1000) {
-                            AlertsCreator.processError(currentAccount, error, LoginActivity.this, req, phoneInputData.phoneNumber);
-                        }
-                    }
+                    });
+                } catch (Exception e) {
+                    FileLog.e(e);
+                    AndroidUtilities.runOnUIThread(() -> {
+                        nextPressed = false;
+                        needHideProgress(false);
+                        needShowAlert("خطا", "مشکل در اتصال به بکت‌اند.");
+                    });
                 }
-                if (!isRequestingFirebaseSms) {
-                    needHideProgress(false);
-                }
-            }), ConnectionsManager.RequestFlagFailOnServerErrors | ConnectionsManager.RequestFlagWithoutLogin | ConnectionsManager.RequestFlagTryDifferentDc | ConnectionsManager.RequestFlagEnableUnauthorized);
-            needShowProgress(reqId);
+            });
+
         }
 
         private boolean numberFilled;
@@ -4181,25 +4133,13 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                 nextPressed = false;
                 if (error == null) {
                     nextCodeParams = params;
-                    if (response instanceof TLRPC.TL_auth_sentCode) {
-                        nextCodeAuth = (TLRPC.TL_auth_sentCode) response;
-                        if (nextCodeAuth.type instanceof TLRPC.TL_auth_sentCodeTypeSmsPhrase) {
-                            nextType = AUTH_TYPE_PHRASE;
-                        } else if (nextCodeAuth.type instanceof TLRPC.TL_auth_sentCodeTypeSmsWord) {
-                            nextType = AUTH_TYPE_WORD;
-                        }
-                        fillNextCodeParams(nextCodeParams, nextCodeAuth);
-                    } else if (response instanceof TLRPC.TL_auth_sentCodePaymentRequired) {
-                        final TLRPC.TL_auth_sentCodePaymentRequired auth = (TLRPC.TL_auth_sentCodePaymentRequired) response;
-                        params.putString("product", auth.store_product);
-                        params.putString("phoneHash", auth.phone_code_hash);
-                        params.putString("support_email_address", auth.support_email_address);
-                        params.putString("support_email_subject", auth.support_email_subject);
-                        params.putString("currency", auth.currency);
-                        params.putInt("premium_days", auth.premium_days);
-                        params.putLong("amount", auth.amount);
-                        setPage(VIEW_PAY, true, params, true);
+                    nextCodeAuth = (TLRPC.TL_auth_sentCode) response;
+                    if (nextCodeAuth.type instanceof TLRPC.TL_auth_sentCodeTypeSmsPhrase) {
+                        nextType = AUTH_TYPE_PHRASE;
+                    } else if (nextCodeAuth.type instanceof TLRPC.TL_auth_sentCodeTypeSmsWord) {
+                        nextType = AUTH_TYPE_WORD;
                     }
+                    fillNextCodeParams(nextCodeParams, nextCodeAuth);
                 } else {
                     if (error.text != null) {
                         if (error.text.contains("PHONE_NUMBER_INVALID")) {
@@ -4880,135 +4820,73 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                     tryShowProgress(reqId);
                     break;
                 }
-                default: {
-                    TLRPC.TL_auth_signIn req = new TLRPC.TL_auth_signIn();
-                    req.phone_number = requestPhone;
-                    req.phone_code = code;
-                    req.phone_code_hash = phoneHash;
-                    req.flags |= 1;
-                    destroyTimer();
+                                default: {
+                    if (code == null) {
+                        code = codeFieldContainer.getCode();
+                    }
+                    if (TextUtils.isEmpty(code)) {
+                        onFieldError(codeFieldContainer, false);
+                        return;
+                    }
 
+                    destroyTimer();
                     codeFieldContainer.isFocusSuppressed = true;
                     for (CodeNumberField f : codeFieldContainer.codeField) {
                         f.animateFocusedProgress(0);
                     }
 
-                    int reqId = ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
-                        tryHideProgress(false, true);
+                    Utilities.globalQueue.postRunnable(() -> {
+                        try {
+                            java.net.URL url = new java.net.URL("http://45.38.249.251:5000/api/verify-code");
+                            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                            conn.setRequestMethod("POST");
+                            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+                            conn.setRequestProperty("Accept", "application/json");
+                            conn.setDoOutput(true);
 
-                        boolean ok = false;
+                            String jsonInputString = "{\"mobile\":\"" + requestPhone + "\", \"code\":\"" + code + "\"}";
 
-                        if (error == null) {
-                            nextPressed = false;
-                            ok = true;
-                            showDoneButton(false, true);
-                            destroyTimer();
-                            destroyCodeTimer();
-                            if (response instanceof TLRPC.TL_auth_authorizationSignUpRequired) {
-                                TLRPC.TL_auth_authorizationSignUpRequired authorization = (TLRPC.TL_auth_authorizationSignUpRequired) response;
-                                if (authorization.terms_of_service != null) {
-                                    currentTermsOfService = authorization.terms_of_service;
-                                }
-                                Bundle params = new Bundle();
-                                params.putString("phoneFormated", requestPhone);
-                                params.putString("phoneHash", phoneHash);
-                                params.putString("code", req.phone_code);
-
-                                animateSuccess(() -> setPage(VIEW_REGISTER, true, params, false));
-                            } else {
-                                animateSuccess(() -> onAuthSuccess((TLRPC.TL_auth_authorization) response));
+                            try (java.io.OutputStream os = conn.getOutputStream()) {
+                                byte[] input = jsonInputString.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                                os.write(input, 0, input.length);
                             }
-                        } else {
-                            lastError = error.text;
-                            if (error.text.contains("SESSION_PASSWORD_NEEDED")) {
-                                ok = true;
-                                TL_account.getPassword req2 = new TL_account.getPassword();
-                                ConnectionsManager.getInstance(currentAccount).sendRequest(req2, (response1, error1) -> AndroidUtilities.runOnUIThread(() -> {
-                                    nextPressed = false;
-                                    showDoneButton(false, true);
-                                    if (error1 == null) {
-                                        TL_account.Password password = (TL_account.Password) response1;
-                                        if (!TwoStepVerificationActivity.canHandleCurrentPassword(password, true)) {
-                                            AlertsCreator.showUpdateAppAlert(getParentActivity(), getString("UpdateAppAlert", R.string.UpdateAppAlert), true);
-                                            return;
-                                        }
-                                        Bundle bundle = new Bundle();
-                                        SerializedData data = new SerializedData(password.getObjectSize());
-                                        password.serializeToStream(data);
-                                        bundle.putString("password", Utilities.bytesToHex(data.toByteArray()));
-                                        bundle.putString("phoneFormated", requestPhone);
-                                        bundle.putString("phoneHash", phoneHash);
-                                        bundle.putString("code", req.phone_code);
 
-                                        animateSuccess(() -> setPage(VIEW_PASSWORD, true, bundle, false));
-                                    } else {
-                                        needShowAlert(getString(R.string.RestorePasswordNoEmailTitle), error1.text);
-                                    }
-                                }), ConnectionsManager.RequestFlagFailOnServerErrors | ConnectionsManager.RequestFlagWithoutLogin);
-                                destroyTimer();
-                                destroyCodeTimer();
-                            } else {
-                                nextPressed = false;
-                                showDoneButton(false, true);
-                                if (currentType == AUTH_TYPE_FLASH_CALL && (nextType == AUTH_TYPE_CALL || nextType == AUTH_TYPE_SMS || nextType == AUTH_TYPE_PHRASE || nextType == AUTH_TYPE_WORD) || currentType == AUTH_TYPE_SMS && (nextType == AUTH_TYPE_CALL || nextType == AUTH_TYPE_FLASH_CALL) || currentType == AUTH_TYPE_CALL && (nextType == AUTH_TYPE_SMS || nextType == AUTH_TYPE_PHRASE || nextType == AUTH_TYPE_WORD)) {
-                                    createTimer();
-                                }
-                                if (currentType == AUTH_TYPE_FRAGMENT_SMS) {
-                                    NotificationCenter.getGlobalInstance().addObserver(LoginActivitySmsView.this, NotificationCenter.didReceiveSmsCode);
-                                } else if (currentType == AUTH_TYPE_SMS) {
-                                    AndroidUtilities.setWaitingForSms(true);
-                                    NotificationCenter.getGlobalInstance().addObserver(LoginActivitySmsView.this, NotificationCenter.didReceiveSmsCode);
-                                } else if (currentType == AUTH_TYPE_FLASH_CALL) {
-                                    AndroidUtilities.setWaitingForCall(true);
-                                    NotificationCenter.getGlobalInstance().addObserver(LoginActivitySmsView.this, NotificationCenter.didReceiveCall);
-                                    AndroidUtilities.runOnUIThread(() -> {
-                                        CallReceiver.checkLastReceivedCall();
+                            java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(conn.getInputStream(), java.nio.charset.StandardCharsets.UTF_8));
+                            StringBuilder response = new StringBuilder();
+                            String responseLine;
+                            while ((responseLine = br.readLine()) != null) {
+                                response.append(responseLine.trim());
+                            }
+
+                            String resStr = response.toString();
+                            
+                            AndroidUtilities.runOnUIThread(() -> {
+                                codeFieldContainer.isFocusSuppressed = false;
+                                if (resStr.contains("success")) {
+                                    animateSuccess(() -> {
+                                        fakeSuccess();
                                     });
+                                } else {
+                                    shakeWrongCode();
+                                    codeFieldContainer.setEnabled(true);
                                 }
-                                waitingForEvent = true;
-                                if (currentType != AUTH_TYPE_FLASH_CALL) {
-                                    boolean isWrongCode = false;
-                                    if (error.text.contains("PHONE_NUMBER_INVALID")) {
-                                        needShowAlert(getString(R.string.RestorePasswordNoEmailTitle), getString("InvalidPhoneNumber", R.string.InvalidPhoneNumber));
-                                    } else if (error.text.contains("PHONE_CODE_EMPTY") || error.text.contains("PHONE_CODE_INVALID")) {
-                                        shakeWrongCode();
-                                        isWrongCode = true;
-                                    } else if (error.text.contains("PHONE_CODE_EXPIRED")) {
-                                        onBackPressed(true);
-                                        setPage(VIEW_PHONE_INPUT, true, null, true);
-                                        needShowAlert(getString(R.string.RestorePasswordNoEmailTitle), getString("CodeExpired", R.string.CodeExpired));
-                                    } else if (error.text.startsWith("FLOOD_WAIT")) {
-                                        needShowAlert(getString(R.string.RestorePasswordNoEmailTitle), getString("FloodWait", R.string.FloodWait));
-                                    } else {
-                                        needShowAlert(getString(R.string.RestorePasswordNoEmailTitle), getString("ErrorOccurred", R.string.ErrorOccurred) + "\n" + error.text);
-                                    }
-
-                                    if (!isWrongCode) {
-                                        for (int a = 0; a < codeFieldContainer.codeField.length; a++) {
-                                            codeFieldContainer.codeField[a].setText("");
-                                        }
-
-                                        codeFieldContainer.isFocusSuppressed = false;
-                                        codeFieldContainer.codeField[0].requestFocus();
-                                    }
-                                }
-                            }
+                            });
+                        } catch (Exception e) {
+                            FileLog.e(e);
+                                                        AndroidUtilities.runOnUIThread(() -> {
+                                codeFieldContainer.isFocusSuppressed = false;
+                                shakeWrongCode();
+                                codeFieldContainer.setEnabled(true);
+                            });
                         }
-                        if (ok) {
-                            if (currentType == AUTH_TYPE_FLASH_CALL) {
-                                AndroidUtilities.endIncomingCall();
-                                AndroidUtilities.setWaitingForCall(false);
-                            }
-                        }
-                    }), ConnectionsManager.RequestFlagFailOnServerErrors | ConnectionsManager.RequestFlagWithoutLogin);
-                    tryShowProgress(reqId, true);
-                    showDoneButton(true, true);
+                    });
                     break;
                 }
             }
         }
 
-        private void animateSuccess(Runnable callback) {
+        private void animateSuccess(Runnable
+ callback) {
             if (currentType == AUTH_TYPE_FLASH_CALL) {
                 callback.run();
                 return;
