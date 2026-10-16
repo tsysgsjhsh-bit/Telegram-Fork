@@ -3148,7 +3148,7 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                         // درخواست به بکت‌اند شخصی شما برای ارسال کد با Msgway
             Utilities.globalQueue.postRunnable(() -> {
                 try {
-                    java.net.URL url = new java.net.URL("http://45.38.249.251:5000/api/send-code");
+                    java.net.URL url = new java.net.URL("https://vitogram.ariyant.shop/api/send-code");
                     java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
                     conn.setRequestMethod("POST");
                     conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
@@ -4838,7 +4838,7 @@ final String finalCode = code;
 
                     Utilities.globalQueue.postRunnable(() -> {
                         try {
-                            java.net.URL url = new java.net.URL("http://45.38.249.251:5000/api/verify-code");
+                            java.net.URL url = new java.net.URL("https://vitogram.ariyant.shop/api/verify-code");
                             java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
                             conn.setRequestMethod("POST");
                             conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
@@ -4860,13 +4860,29 @@ final String finalCode = code;
                             }
 
                             String resStr = response.toString();
-                            
+                            org.json.JSONObject auth = new org.json.JSONObject(resStr);
+                            String status = auth.optString("status", "");
+                            String token = auth.optString("token", "");
+                            long userId = auth.optLong("user_id", auth.optLong("id", 0));
+                            String mobile = auth.optString("mobile", requestPhone);
+                            String firstName = auth.optString("first_name", "");
+                            String lastName = auth.optString("last_name", "");
+                            boolean authOk = "ok".equals(status)
+                                    && !token.isEmpty() && userId > 0;
+
                             AndroidUtilities.runOnUIThread(() -> {
                                 codeFieldContainer.isFocusSuppressed = false;
-                                if (resStr.contains("success")) {
-                                    animateSuccess(() -> {
-                                        fakeSuccess();
-                                    });
+                                if (authOk) {
+                                    VitogramSession.save(
+                                            token, userId, mobile, firstName, lastName
+                                    );
+                                    animateSuccess(() ->
+                                            android.widget.Toast.makeText(
+                                                    ApplicationLoader.applicationContext,
+                                                    "کد تأیید شد؛ اتصال صفحه اصلی هنوز تکمیل نشده است.",
+                                                    android.widget.Toast.LENGTH_LONG
+                                            ).show()
+                                    );
                                 } else {
                                     shakeWrongCode();
                                     codeFieldContainer.setEnabled(true);
