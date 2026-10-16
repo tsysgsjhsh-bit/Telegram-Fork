@@ -43,8 +43,8 @@
         <item name="android:textColorHighlight">#60808080</item>
         <item name="android:datePickerStyle">@style/Theme.TMessages.DatePicker</item>
         <item name="android:datePickerDialogTheme">@style/Theme.TMessages.Dialog.Alert</item>
-        <item name="android:ariyant.shopPickerStyle">@style/Theme.TMessages.TimePicker</item>
-        <item name="android:ariyant.shopPickerDialogTheme">@style/Theme.TMessages.Dialog.Alert</item>
+        <item name="android:timePickerStyle">@style/Theme.TMessages.TimePicker</item>
+        <item name="android:timePickerDialogTheme">@style/Theme.TMessages.Dialog.Alert</item>
         <item name="android:calendarViewStyle">@style/Theme.TMessages.CalendarView</item>
         <item name="android:navigationBarColor">#000000</item>
         <item name="android:textViewStyle">@style/MyTextViewStyle</item>
@@ -69,8 +69,8 @@
         <item name="android:textColorHighlight">#60808080</item>
         <item name="android:datePickerStyle">@style/Theme.TMessages.Dark.DatePicker</item>
         <item name="android:datePickerDialogTheme">@style/Theme.TMessages.Dark.Dialog.Alert</item>
-        <item name="android:ariyant.shopPickerStyle">@style/Theme.TMessages.Dark.TimePicker</item>
-        <item name="android:ariyant.shopPickerDialogTheme">@style/Theme.TMessages.Dark.Dialog.Alert</item>
+        <item name="android:timePickerStyle">@style/Theme.TMessages.Dark.TimePicker</item>
+        <item name="android:timePickerDialogTheme">@style/Theme.TMessages.Dark.Dialog.Alert</item>
         <item name="android:calendarViewStyle">@style/Theme.TMessages.CalendarView</item>
         <item name="android:navigationBarColor">#000000</item>
         <item name="android:textViewStyle">@style/MyTextViewStyle</item>
