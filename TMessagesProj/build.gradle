@@ -111,7 +111,6 @@ dependencies {
 
 android {
     aaptOptions {
-        noCrunch"\*\.png"
         cruncherEnabled = false
     }
     compileSdkVersion 36
