@@ -36,10 +36,10 @@ jobs:
       - name: Build APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew :TMessagesProj_App:assembleAfatDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Vitogram-Debug-APK
-          path: TMessagesProj/build/outputs/apk/debug/*.apk
+          path: "**/build/outputs/apk/**/*.apk"

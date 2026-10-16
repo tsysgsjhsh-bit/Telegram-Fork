@@ -26,7 +26,26 @@
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:999307497380:android:39c15a7fc4dfd75c79bb31",
+        "mobilesdk_app_id": "1:999307497380:android:370f2316b3e8d8e479bb31",
+        "android_client_info": {
+          "package_name": "ir.vitogram.beta"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDuH-dB3OO_ODKoZAxDwyYVPPwuLJ6EgY0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:999307497380:android:370f2316b3e8d8e479bb31",
         "android_client_info": {
           "package_name": "ir.vitogram.web"
         }
