@@ -8,6 +8,8 @@
 
 package org.telegram.ui;
 
+import org.telegram.messenger.VitogramSession;
+
 import static org.telegram.messenger.AndroidUtilities.dp;
 import static org.telegram.messenger.AndroidUtilities.replaceArrows;
 import static org.telegram.messenger.AndroidUtilities.replaceSingleTag;
