@@ -4878,13 +4878,11 @@ final String finalCode = code;
                                     VitogramSession.save(
                                             token, userId, mobile, firstName, lastName
                                     );
-                                    animateSuccess(() ->
-                                            android.widget.Toast.makeText(
-                                                    ApplicationLoader.applicationContext,
-                                                    "کد تأیید شد؛ اتصال صفحه اصلی هنوز تکمیل نشده است.",
-                                                    android.widget.Toast.LENGTH_LONG
-                                            ).show()
-                                    );
+                                    animateSuccess(() -> {
+                                        MainTabsActivity mainTabsActivity = new MainTabsActivity();
+                                        mainTabsActivity.prepareDialogsActivity(null);
+                                        presentFragment(mainTabsActivity, true);
+                                    });
                                 } else {
                                     shakeWrongCode();
                                     codeFieldContainer.setEnabled(true);
