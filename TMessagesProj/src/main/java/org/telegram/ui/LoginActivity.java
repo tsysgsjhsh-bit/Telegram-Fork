@@ -4869,20 +4869,40 @@ final String finalCode = code;
                             String mobile = auth.optString("mobile", requestPhone);
                             String firstName = auth.optString("first_name", "");
                             String lastName = auth.optString("last_name", "");
+                            boolean isNewUser = auth.optBoolean("is_new_user", false);
+                            String profileName = firstName == null ? "" : firstName.trim();
+                            boolean needsProfile = isNewUser
+                                    || profileName.isEmpty()
+                                    || "کاربر ویتوگرام".equals(profileName)
+                                    || profileName.startsWith("User ");
                             boolean authOk = "ok".equals(status)
                                     && !token.isEmpty() && userId > 0;
 
                             AndroidUtilities.runOnUIThread(() -> {
                                 codeFieldContainer.isFocusSuppressed = false;
                                 if (authOk) {
-                                    VitogramSession.save(
-                                            token, userId, mobile, firstName, lastName
-                                    );
-                                    animateSuccess(() -> {
-                                        MainTabsActivity mainTabsActivity = new MainTabsActivity();
-                                        mainTabsActivity.prepareDialogsActivity(null);
-                                        presentFragment(mainTabsActivity, true);
-                                    });
+                                    if (needsProfile) {
+                                        Bundle registerParams = new Bundle();
+                                        registerParams.putString("phoneFormated", mobile);
+                                        registerParams.putString("phoneHash", "vitogram");
+                                        registerParams.putString("vitogram_token", token);
+                                        registerParams.putLong("vitogram_user_id", userId);
+                                        registerParams.putString("vitogram_mobile", mobile);
+                                        registerParams.putString("vitogram_first_name", firstName);
+                                        registerParams.putString("vitogram_last_name", lastName);
+                                        animateSuccess(() ->
+                                                setPage(VIEW_REGISTER, true, registerParams, false)
+                                        );
+                                    } else {
+                                        VitogramSession.save(
+                                                token, userId, mobile, firstName, lastName
+                                        );
+                                        animateSuccess(() -> {
+                                            MainTabsActivity mainTabsActivity = new MainTabsActivity();
+                                            mainTabsActivity.prepareDialogsActivity(null);
+                                            presentFragment(mainTabsActivity, true);
+                                        });
+                                    }
                                 } else {
                                     shakeWrongCode();
                                     codeFieldContainer.setEnabled(true);
@@ -8152,10 +8172,120 @@ final String finalCode = code;
                 showTermsOfService(true);
                 return;
             }
-            if (firstNameField.length() == 0) {
+            String enteredFirstName = firstNameField.getText().toString().trim();
+            if (enteredFirstName.isEmpty()) {
                 onFieldError(firstNameOutlineView, true);
+                firstNameField.requestFocus();
                 return;
             }
+            if (currentParams != null
+                    && currentParams.containsKey("vitogram_token")) {
+                nextPressed = true;
+
+                final String firstName = firstNameField.getText().toString().trim();
+                final String lastName = lastNameField.getText().toString().trim();
+                final String mobile = currentParams.getString("vitogram_mobile", requestPhone);
+                final String token = currentParams.getString("vitogram_token", "");
+                final long userId = currentParams.getLong("vitogram_user_id", 0);
+
+                needShowProgress(0);
+                Utilities.globalQueue.postRunnable(() -> {
+                    try {
+                        org.json.JSONObject body = new org.json.JSONObject();
+                        body.put("mobile", mobile);
+                        body.put("first_name", firstName);
+                        body.put("last_name", lastName);
+
+                        java.net.HttpURLConnection conn =
+                                (java.net.HttpURLConnection) new java.net.URL(
+                                        "https://vitogram.ariyant.shop/api/update-profile"
+                                ).openConnection();
+                        conn.setRequestMethod("POST");
+                        conn.setConnectTimeout(15000);
+                        conn.setReadTimeout(15000);
+                        conn.setRequestProperty(
+                                "Content-Type", "application/json; charset=utf-8"
+                        );
+                        conn.setRequestProperty("Accept", "application/json");
+                        conn.setRequestProperty("Authorization", "Bearer " + token);
+                        conn.setDoOutput(true);
+
+                        byte[] payload = body.toString().getBytes(
+                                java.nio.charset.StandardCharsets.UTF_8
+                        );
+                        try (java.io.OutputStream os = conn.getOutputStream()) {
+                            os.write(payload);
+                        }
+
+                        int responseCode = conn.getResponseCode();
+                        java.io.InputStream stream =
+                                responseCode >= 200 && responseCode < 300
+                                        ? conn.getInputStream()
+                                        : conn.getErrorStream();
+
+                        if (stream == null) {
+                            throw new java.io.IOException(
+                                    "Profile API returned HTTP " + responseCode
+                            );
+                        }
+
+                        StringBuilder response = new StringBuilder();
+                        try (java.io.BufferedReader reader =
+                                     new java.io.BufferedReader(
+                                             new java.io.InputStreamReader(
+                                                     stream,
+                                                     java.nio.charset.StandardCharsets.UTF_8
+                                             ))) {
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                response.append(line);
+                            }
+                        } finally {
+                            conn.disconnect();
+                        }
+
+                        org.json.JSONObject result =
+                                new org.json.JSONObject(response.toString());
+                        boolean profileOk = responseCode >= 200
+                                && responseCode < 300
+                                && "ok".equals(result.optString("status", ""));
+                        String profileError = result.optString(
+                                "message", "ثبت نام انجام نشد. دوباره تلاش کن."
+                        );
+
+                        AndroidUtilities.runOnUIThread(() -> {
+                            nextPressed = false;
+                            needHideProgress(false);
+                            if (profileOk) {
+                                VitogramSession.save(
+                                        token, userId, mobile, firstName, lastName
+                                );
+                                AndroidUtilities.hideKeyboard(fragmentView.findFocus());
+                                MainTabsActivity mainTabsActivity = new MainTabsActivity();
+                                mainTabsActivity.prepareDialogsActivity(null);
+                                presentFragment(mainTabsActivity, true);
+                            } else {
+                                needShowAlert(
+                                        getString(R.string.RestorePasswordNoEmailTitle),
+                                        profileError
+                                );
+                            }
+                        });
+                    } catch (Exception e) {
+                        FileLog.e(e);
+                        AndroidUtilities.runOnUIThread(() -> {
+                            nextPressed = false;
+                            needHideProgress(false);
+                            needShowAlert(
+                                    getString(R.string.RestorePasswordNoEmailTitle),
+                                    "ارتباط با سرور ویتوگرام ناموفق بود. دوباره تلاش کن."
+                            );
+                        });
+                    }
+                });
+                return;
+            }
+
             nextPressed = true;
             TLRPC.TL_auth_signUp req = new TLRPC.TL_auth_signUp();
             req.phone_code_hash = phoneHash;

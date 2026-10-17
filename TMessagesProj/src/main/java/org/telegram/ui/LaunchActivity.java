@@ -585,7 +585,8 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
 
         LiteMode.addOnPowerSaverAppliedListener(onPowerSaverCallback = this::onPowerSaver);
         if (actionBarLayout.getFragmentStack().isEmpty() && (layersActionBarLayout == null || layersActionBarLayout.getFragmentStack().isEmpty())) {
-            if (!UserConfig.getInstance(currentAccount).isClientActivated()) {
+            if (!UserConfig.getInstance(currentAccount).isClientActivated()
+                    && !org.telegram.messenger.VitogramSession.isLoggedIn()) {
                 actionBarLayout.addFragmentToStack(getClientNotActivatedFragment());
             } else {
                 MainTabsActivity mainTabsActivity = new MainTabsActivity();
